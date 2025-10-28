@@ -1,0 +1,63 @@
+version: "3.8"
+
+services:
+  # 1. PostgreSQL Database Service with PostGIS
+  db:
+    image: postgis/postgis:15-3.3-alpine # Official PostGIS image
+    container_name: aq_db
+    restart: always
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-aq_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-supersecurepassword}
+      POSTGRES_DB: ${POSTGRES_DB:-airquality_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+      # Volume to run the initialization script for PostGIS extension
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. FastAPI Backend Service (API)
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: aq_api
+    restart: always
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+    environment:
+      # Connection URL for the API to connect to the DB container
+      DATABASE_URL: postgresql://${POSTGRES_USER:-aq_user}:${POSTGRES_PASSWORD:-supersecurepassword}@db:5432/${POSTGRES_DB:-airquality_db}
+    # Ensure the API waits until the database is ready
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # 3. Next.js Frontend Service (Web)
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: aq_web
+    restart: always
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules # Important to prevent overwriting node_modules from the host
+    # Frontend depends on the API to be running
+    depends_on:
+      - api
+    # Command to run Nuxt dev server
+    command: npm run dev
+
+volumes:
+  db_data:
