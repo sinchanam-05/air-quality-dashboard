@@ -8,10 +8,7 @@ from contextlib import asynccontextmanager # New Import
 # Import the database logic and routers (routers will be added next)
 from .database import init_db, get_db
 from .tasks import start_ingestion_scheduler, stop_ingestion_scheduler
-# from .routers import forecast # PENDING: To be uncommented in later commit
-# from .tasks import start_ingestion_scheduler, stop_ingestion_scheduler # PENDING: To be uncommented in later commit
-
-# --- Lifespan Context Manager ---
+from .routers import forecast
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -53,6 +50,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+app.include_router(forecast.router, prefix="/api", tags=["Forecast"])
 # --- Routes ---
 # The health check route remains the same, confirming the DB connection is still active via the dependency.
 
