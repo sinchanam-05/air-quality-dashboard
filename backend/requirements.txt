@@ -13,4 +13,5 @@ geoalchemy2 # CRITICAL: For SQLAlchemy to interact with the PostGIS Geometry typ
 # Data processing and scheduling
 pandas
 python-multipart 
+apscheduler
 requests
